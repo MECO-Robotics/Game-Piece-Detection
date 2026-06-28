@@ -1,0 +1,30 @@
+import org.gradle.internal.os.OperatingSystem
+
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+
+        String frcYear = '2026'
+        File frcHome
+        if (OperatingSystem.current().isWindows()) {
+            String publicFolder = System.getenv('PUBLIC')
+            if (publicFolder == null) {
+                publicFolder = "C:\\Users\\Public"
+            }
+            frcHome = new File(new File(publicFolder, "wpilib"), frcYear)
+        } else {
+            frcHome = new File(new File(System.getProperty("user.home"), "wpilib"), frcYear)
+        }
+
+        maven {
+            name = 'frcHome'
+            url = new File(frcHome, 'maven')
+        }
+    }
+}
+
+Properties props = System.getProperties()
+props.setProperty("org.gradle.internal.native.headers.unresolved.dependencies.ignore", "true")
+
+rootProject.name = 'Game-Piece-Detection'

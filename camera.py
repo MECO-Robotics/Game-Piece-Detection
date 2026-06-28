@@ -22,6 +22,9 @@ MIN_CIRCULARITY = 0.42
 MAX_ASPECT_ERROR = 0.75
 MIN_CONFIDENCE_TO_CREATE_TRACK = 0.55
 
+SUPPORTED_SHAPES = ("circle",)
+DEFAULT_SHAPE = "circle"
+
 MIN_HITS_TO_SHOW = 3
 MAX_MATCH_DISTANCE_PX = 180
 MAX_MISSED_FRAMES_SEEN = 6
@@ -133,6 +136,13 @@ def distance_to_prediction(track, det):
 # Detection
 # ==========================
 
+def classify_shape(circularity, aspect_error, source):
+    if source == "circle" or (circularity >= MIN_CIRCULARITY and aspect_error <= MAX_ASPECT_ERROR):
+        return "circle"
+
+    return DEFAULT_SHAPE
+
+
 def make_detection(x, y, w, h, area, circularity, aspect_error, focal_px, source="contour"):
     center_x = x + w / 2
     center_y = y + h / 2
@@ -172,6 +182,7 @@ def make_detection(x, y, w, h, area, circularity, aspect_error, focal_px, source
         "distance_in": distance_in,
         "confidence": confidence,
         "source": source,
+        "shape": classify_shape(circularity, aspect_error, source),
     }
 
 
@@ -419,6 +430,7 @@ def update_tracks(detections):
             best_track["aspect_error"] = det["aspect_error"]
             best_track["confidence"] = det["confidence"]
             best_track["source"] = det.get("source", "contour")
+            best_track["shape"] = det.get("shape", DEFAULT_SHAPE)
 
             best_track["hits"] += 1
             best_track["missed"] = 0
@@ -500,6 +512,12 @@ def group_tracks(visible_tracks):
         area = sum(t["area"] for t in group)
         yaw_deg = ((center_x - WIDTH / 2) / (WIDTH / 2)) * (HFOV_DEG / 2)
 
+        shape_counts = {}
+        for t in group:
+            shape = t.get("shape", DEFAULT_SHAPE)
+            shape_counts[shape] = shape_counts.get(shape, 0) + 1
+        primary_shape = max(shape_counts, key=shape_counts.get) if shape_counts else DEFAULT_SHAPE
+
         distances = [t["distance_in"] for t in group if t["distance_in"] is not None]
         avg_distance = sum(distances) / len(distances) if distances else None
 
@@ -511,6 +529,8 @@ def group_tracks(visible_tracks):
             "yaw_deg": yaw_deg,
             "avg_distance_in": avg_distance,
             "area": area,
+            "shape": primary_shape,
+            "shape_counts": shape_counts,
             "track_ids": [t["id"] for t in group],
         })
 
@@ -538,6 +558,7 @@ def track_to_json(t):
         "hits": t["hits"],
         "status": "SEEN" if t["missed"] == 0 else "PRED",
         "source": t.get("source", "contour"),
+        "shape": t.get("shape", DEFAULT_SHAPE),
     }
 
 
@@ -592,6 +613,7 @@ def draw_overlay(frame, visible_tracks, groups, robot_target, fps_value, raw_cou
         label = (
             f"BALL #{t['id']} {status} "
             f"{t.get('source','contour')} "
+            f"shape={t.get('shape', DEFAULT_SHAPE)} "
             f"yaw={t['yaw_deg']:.1f} "
             f"conf={t['confidence']:.2f}"
         )
@@ -689,6 +711,8 @@ def vision_loop():
                     "yaw_deg": round(g["yaw_deg"], 2),
                     "avg_distance_in": None if g["avg_distance_in"] is None else round(g["avg_distance_in"], 1),
                     "area": round(g["area"], 1),
+                    "shape": g["shape"],
+                    "shape_counts": g["shape_counts"],
                     "track_ids": g["track_ids"],
                 }
                 for g in groups
@@ -698,6 +722,8 @@ def vision_loop():
                 "count": largest_group["count"],
                 "yaw_deg": round(largest_group["yaw_deg"], 2),
                 "avg_distance_in": None if largest_group["avg_distance_in"] is None else round(largest_group["avg_distance_in"], 1),
+                "shape": largest_group["shape"],
+                "shape_counts": largest_group["shape_counts"],
                 "track_ids": largest_group["track_ids"],
             },
             "robot_target": None if robot_target is None else track_to_json(robot_target),
@@ -754,13 +780,13 @@ def index():
 
             <h2>Groups</h2>
             <table>
-                <thead><tr><th>ID</th><th>Count</th><th>Yaw</th><th>Tracks</th></tr></thead>
+                <thead><tr><th>ID</th><th>Count</th><th>Shape</th><th>Yaw</th><th>Distance</th><th>Tracks</th></tr></thead>
                 <tbody id="groups"></tbody>
             </table>
 
             <h2>Balls</h2>
             <table>
-                <thead><tr><th>ID</th><th>Status</th><th>Source</th><th>Yaw</th><th>Conf</th></tr></thead>
+                <thead><tr><th>ID</th><th>Status</th><th>Shape</th><th>Source</th><th>Yaw</th><th>Distance</th><th>Conf</th></tr></thead>
                 <tbody id="balls"></tbody>
             </table>
         </div>
@@ -778,14 +804,14 @@ async function updateData() {
 
         if (data.largest_group) {
             document.getElementById('largest').innerHTML =
-                `Group ${data.largest_group.id}: ${data.largest_group.count} balls, yaw ${data.largest_group.yaw_deg}°`;
+                `Group ${data.largest_group.id}: ${data.largest_group.count} balls, shape ${data.largest_group.shape}, yaw ${data.largest_group.yaw_deg}°, distance ${formatDistance(data.largest_group.avg_distance_in)}`;
         } else {
             document.getElementById('largest').textContent = 'None';
         }
 
         if (data.robot_target) {
             document.getElementById('target').innerHTML =
-                `Ball #${data.robot_target.id}: yaw ${data.robot_target.yaw_deg}°, conf ${data.robot_target.confidence}`;
+                `Ball #${data.robot_target.id}: yaw ${data.robot_target.yaw_deg}°, distance ${formatDistance(data.robot_target.distance_in)}, conf ${data.robot_target.confidence}`;
         } else {
             document.getElementById('target').textContent = 'None';
         }
@@ -797,7 +823,9 @@ async function updateData() {
                 <tr>
                     <td>${g.id}</td>
                     <td>${g.count}</td>
+                    <td>${g.shape}</td>
                     <td>${g.yaw_deg}°</td>
+                    <td>${formatDistance(g.avg_distance_in)}</td>
                     <td>${g.track_ids.join(', ')}</td>
                 </tr>
             `;
@@ -810,8 +838,10 @@ async function updateData() {
                 <tr>
                     <td>${b.id}</td>
                     <td>${b.status}</td>
+                    <td>${b.shape}</td>
                     <td>${b.source}</td>
                     <td>${b.yaw_deg}°</td>
+                    <td>${formatDistance(b.distance_in)}</td>
                     <td>${b.confidence}</td>
                 </tr>
             `;
@@ -823,6 +853,14 @@ async function updateData() {
 
 setInterval(updateData, 250);
 updateData();
+
+function formatDistance(distanceIn) {
+    if (distanceIn === null || distanceIn === undefined) {
+        return '--';
+    }
+
+    return `${distanceIn.toFixed(1)} in`;
+}
 </script>
 </body>
 </html>

@@ -1,0 +1,13 @@
+.gradle/
+build/
+bin/
+.classpath
+.project
+.settings/
+.factorypath
+*.class
+*.log
+.DS_Store
+__pycache__/
+networktables.json
+simgui*.json
