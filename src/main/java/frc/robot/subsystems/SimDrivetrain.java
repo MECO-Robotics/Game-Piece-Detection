@@ -43,6 +43,10 @@ public class SimDrivetrain {
                 Constants.Drivetrain.kMaxAngularSpeedRadiansPerSecond));
   }
 
+  public void drive(ChassisSpeeds speeds) {
+    drive(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, speeds.omegaRadiansPerSecond);
+  }
+
   public void stop() {
     commandedSpeeds = new ChassisSpeeds();
   }
@@ -61,12 +65,22 @@ public class SimDrivetrain {
     double now = timer.get();
     double dtSeconds = Math.max(0.0, Math.min(0.05, now - lastTimestampSeconds));
     lastTimestampSeconds = now;
+    advance(dtSeconds);
+  }
 
+  public void simulationPeriodic(double dtSeconds) {
+    advance(Math.max(0.0, dtSeconds));
+    lastTimestampSeconds = timer.get();
+  }
+
+  private void advance(double dtSeconds) {
     Rotation2d heading = pose.getRotation();
     double cos = heading.getCos();
     double sin = heading.getSin();
-    double fieldVx = commandedSpeeds.vxMetersPerSecond * cos - commandedSpeeds.vyMetersPerSecond * sin;
-    double fieldVy = commandedSpeeds.vxMetersPerSecond * sin + commandedSpeeds.vyMetersPerSecond * cos;
+    double fieldVx =
+        commandedSpeeds.vxMetersPerSecond * cos - commandedSpeeds.vyMetersPerSecond * sin;
+    double fieldVy =
+        commandedSpeeds.vxMetersPerSecond * sin + commandedSpeeds.vyMetersPerSecond * cos;
 
     pose =
         new Pose2d(

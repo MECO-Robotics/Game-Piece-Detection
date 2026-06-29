@@ -2,12 +2,14 @@
 
 Greenfield WPILib + PhotonVision simulation stack for RGB-D game-piece detection.
 
-## Day 1 Status
+## Current Status
 
 - Fresh WPILib Java project scaffolded for 2026.
 - PhotonLib vendordep added.
 - Simulated drivetrain pose is published to `Field2d`.
 - PhotonVision simulation is initialized with a generic front RGB-D camera.
+- Day 2 field model added with fuel truth objects, pickup and scoring zones, and a simple waypoint path follower.
+- Automated tests cover drivetrain motion, fuel pickup/scoring state, path follower output, and a full simple pickup-to-score sim path.
 
 ## Commands
 
@@ -18,4 +20,6 @@ GRADLE_USER_HOME=.gradle/user-home ./gradlew build
 GRADLE_USER_HOME=.gradle/user-home ./gradlew simulateJava
 ```
 
-Day 2 should add the field model, game-piece truth objects, pickup/scoring zones, and simple pathing. Existing legacy Python files are intentionally not part of the new stack.
+In the simulator Driver Station, enable Autonomous to run the Day 2 pickup-to-score path. Teleop currently parks the robot until the planned teleop-assist work.
+
+Day 3 should add PhotonVision/PhotonLib object simulation for fuel detections with latency/noise. Existing legacy Python files are intentionally not part of the new stack.
