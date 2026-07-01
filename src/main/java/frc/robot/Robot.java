@@ -43,7 +43,17 @@ public class Robot extends TimedRobot {
     SmartDashboard.putString("Day2Auto/Step", day2AutoStep.name());
 
     if (photonVisionSim != null) {
-      photonVisionSim.update(drivetrain.getPose());
+      try {
+        photonVisionSim.update(drivetrain.getPose(), simField.getAvailableFuelPoses());
+        SmartDashboard.putBoolean("Vision/UpdateFault", false);
+        SmartDashboard.putBoolean("Vision/UpdateHealthy", true);
+        SmartDashboard.putString("Vision/Status", "OK");
+      } catch (RuntimeException ex) {
+        SmartDashboard.putBoolean("Vision/UpdateFault", true);
+        SmartDashboard.putBoolean("Vision/UpdateHealthy", false);
+        SmartDashboard.putString("Vision/Status", "FAULT");
+        SmartDashboard.putString("Vision/UpdateFaultMessage", ex.getMessage());
+      }
     }
   }
 
