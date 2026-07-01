@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.sim.PhotonVisionSim;
 import frc.robot.sim.RgbdViabilitySweep;
 import frc.robot.sim.SimField;
+import frc.robot.sim.RgbdDepthSim;
 import frc.robot.sim.WaypointPathFollower;
 import frc.robot.subsystems.SimDrivetrain;
 import java.util.Optional;
@@ -22,6 +23,7 @@ public class Robot extends TimedRobot {
   private final WaypointPathFollower pathFollower = new WaypointPathFollower();
   private final RgbdViabilitySweep viabilitySweep = new RgbdViabilitySweep();
   private PhotonVisionSim photonVisionSim;
+  private RgbdDepthSim rgbdDepthSim;
   private Day2AutoStep day2AutoStep = Day2AutoStep.DONE;
   private Optional<Pose2d> activeFuelTarget = Optional.empty();
 
@@ -31,7 +33,7 @@ public class Robot extends TimedRobot {
 
     if (isSimulation()) {
       photonVisionSim = new PhotonVisionSim();
-      viabilitySweep.runAndPublish();
+      rgbdDepthSim = new RgbdDepthSim();
     }
   }
 
@@ -48,7 +50,18 @@ public class Robot extends TimedRobot {
     SmartDashboard.putString("Day2Auto/Step", day2AutoStep.name());
 
     if (photonVisionSim != null) {
-      photonVisionSim.update(drivetrain.getPose());
+      try {
+        photonVisionSim.update(drivetrain.getPose(), simField.getAvailableFuelPoses());
+        rgbdDepthSim.update(drivetrain.getPose(), simField.getAvailableFuelPoses());
+        SmartDashboard.putBoolean("Vision/UpdateFault", false);
+        SmartDashboard.putBoolean("Vision/UpdateHealthy", true);
+        SmartDashboard.putString("Vision/Status", "OK");
+      } catch (RuntimeException ex) {
+        SmartDashboard.putBoolean("Vision/UpdateFault", true);
+        SmartDashboard.putBoolean("Vision/UpdateHealthy", false);
+        SmartDashboard.putString("Vision/Status", "FAULT");
+        SmartDashboard.putString("Vision/UpdateFaultMessage", ex.getMessage());
+      }
     }
   }
 

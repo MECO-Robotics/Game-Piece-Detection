@@ -7,6 +7,8 @@ import frc.robot.Constants;
 public class WaypointPathFollower {
   private static final double kCruiseSpeedMetersPerSecond =
       Constants.Drivetrain.kMaxLinearSpeedMetersPerSecond;
+  private static final double kMinApproachSpeedMetersPerSecond = 2.8;
+  private static final double kApproachRampDistanceMeters = 0.08;
   private static final double kWaypointArrivalEpsilonMeters = 0.000001;
 
   public ChassisSpeeds calculate(Pose2d robotPose, Pose2d targetPose) {
@@ -17,8 +19,16 @@ public class WaypointPathFollower {
     double fieldVx = 0.0;
     double fieldVy = 0.0;
     if (distanceMeters > kWaypointArrivalEpsilonMeters) {
-      fieldVx = kCruiseSpeedMetersPerSecond * fieldErrorX / distanceMeters;
-      fieldVy = kCruiseSpeedMetersPerSecond * fieldErrorY / distanceMeters;
+      double speed =
+          (distanceMeters > kApproachRampDistanceMeters)
+              ? kCruiseSpeedMetersPerSecond
+              : kMinApproachSpeedMetersPerSecond
+                  + (kCruiseSpeedMetersPerSecond - kMinApproachSpeedMetersPerSecond)
+                      * (distanceMeters / kApproachRampDistanceMeters);
+
+      speed = clamp(speed, kMinApproachSpeedMetersPerSecond, kCruiseSpeedMetersPerSecond);
+      fieldVx = speed * fieldErrorX / distanceMeters;
+      fieldVy = speed * fieldErrorY / distanceMeters;
     }
 
     double cos = robotPose.getRotation().getCos();
@@ -26,6 +36,10 @@ public class WaypointPathFollower {
     double robotVx = fieldVx * cos + fieldVy * sin;
     double robotVy = -fieldVx * sin + fieldVy * cos;
     return new ChassisSpeeds(robotVx, robotVy, 0.0);
+  }
+
+  private double clamp(double value, double min, double max) {
+    return Math.max(min, Math.min(max, value));
   }
 
   public boolean isAtTarget(Pose2d robotPose, Pose2d targetPose) {

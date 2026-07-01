@@ -84,6 +84,10 @@ public class SimField {
     return maplePhysics.getAvailableFuelPoses();
   }
 
+  public List<Pose2d> getAvailableFuelPoses() {
+    return availableFuel.stream().map(SimGamePiece::pose).toList();
+  }
+
   public boolean tryPickupClosestFuel(Pose2d robotPose) {
     if (carriedFuel.isPresent()) {
       return false;
