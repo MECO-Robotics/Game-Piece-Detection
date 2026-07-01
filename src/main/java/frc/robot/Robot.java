@@ -5,6 +5,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.sim.PhotonVisionSim;
 import frc.robot.sim.SimField;
+import frc.robot.sim.RgbdDepthSim;
 import frc.robot.sim.WaypointPathFollower;
 import frc.robot.subsystems.SimDrivetrain;
 import java.util.Optional;
@@ -20,6 +21,7 @@ public class Robot extends TimedRobot {
   private final SimField simField = new SimField(drivetrain.getField());
   private final WaypointPathFollower pathFollower = new WaypointPathFollower();
   private PhotonVisionSim photonVisionSim;
+  private RgbdDepthSim rgbdDepthSim;
   private Day2AutoStep day2AutoStep = Day2AutoStep.DONE;
   private Optional<Pose2d> activeFuelTarget = Optional.empty();
 
@@ -29,6 +31,7 @@ public class Robot extends TimedRobot {
 
     if (isSimulation()) {
       photonVisionSim = new PhotonVisionSim();
+      rgbdDepthSim = new RgbdDepthSim();
     }
   }
 
@@ -45,6 +48,7 @@ public class Robot extends TimedRobot {
     if (photonVisionSim != null) {
       try {
         photonVisionSim.update(drivetrain.getPose(), simField.getAvailableFuelPoses());
+        rgbdDepthSim.update(drivetrain.getPose(), simField.getAvailableFuelPoses());
         SmartDashboard.putBoolean("Vision/UpdateFault", false);
         SmartDashboard.putBoolean("Vision/UpdateHealthy", true);
         SmartDashboard.putString("Vision/Status", "OK");

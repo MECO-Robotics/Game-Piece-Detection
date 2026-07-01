@@ -70,6 +70,12 @@ public final class Constants {
     public static final double kFuelTargetDiameterMeters = 2.0 * kFuelTargetRadiusMeters;
     public static final int kFuelDetectionClass = 1;
     public static final double kFuelTargetHeightMeters = 0.08;
+    public static final double kDepthHorizontalFovDegrees = 95.0;
+    public static final double kDepthMinRangeMeters = 0.05;
+    public static final double kDepthMaxRangeMeters = 8.0;
+    public static final double kDepthNoiseStdDevMeters = 0.025;
+    public static final double kDepthDropoutRate = 0.0;
+    public static final long kDepthNoiseSeed = 8127L;
     public static final Transform3d kRobotToCamera =
         new Transform3d(
             new Translation3d(0.28, 0.0, 0.42),
