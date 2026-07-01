@@ -41,6 +41,11 @@ public final class Constants {
     public static final double kScoringZoneLengthMeters = 1.4;
     public static final double kScoringZoneWidthMeters = 1.6;
 
+    public static final Pose2d kBumpCenter =
+        new Pose2d(kLengthMeters / 2.0, kWidthMeters / 2.0, Rotation2d.fromDegrees(0.0));
+    public static final double kBumpLengthMeters = kLengthMeters - 1.0;
+    public static final double kBumpWidthMeters = 0.18;
+
     public static final List<Pose2d> kStartingFuelPoses =
         List.of(
             new Pose2d(2.35, 1.55, Rotation2d.fromDegrees(0.0)),
@@ -82,5 +87,36 @@ public final class Constants {
             new Rotation3d(0.0, Math.toRadians(-12.0), 0.0));
 
     private Vision() {}
+  }
+
+  public static final class Physics {
+    public static final double kRobotCollisionRadiusMeters = 0.42;
+    public static final double kRobotBumperLengthMeters = 0.84;
+    public static final double kRobotBumperWidthMeters = 0.84;
+    public static final double kFuelCollisionRadiusMeters = Vision.kFuelTargetRadiusMeters;
+    public static final double kCollisionSlopMeters = 0.015;
+    public static final double kFuelVelocityTransfer = 0.85;
+    public static final double kFuelWallRestitution = 0.35;
+    public static final double kFuelFrictionPerSecond = 2.2;
+    public static final double kMaxFuelSpeedMetersPerSecond = 4.0;
+    public static final double kIntakeCaptureRadiusMeters =
+        kRobotCollisionRadiusMeters + kFuelCollisionRadiusMeters + kCollisionSlopMeters;
+
+    private Physics() {}
+  }
+
+  public static final class Viability {
+    public static final double[] kRangeMeters = {0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.5, 7.0, 8.0};
+    public static final double[] kYawDegrees = {-60.0, -45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0, 60.0};
+    public static final double[] kOcclusionFractions = {0.0, 0.25, 0.5, 0.75};
+    public static final double[] kLatencyMs = {0.0, 30.0, 80.0, 120.0};
+    public static final double[] kDepthNoiseMeters = {0.0, 0.025, 0.075, 0.15};
+    public static final double[] kHorizontalFovDegrees = {60.0, 70.0, 95.0};
+    public static final double[] kCameraPitchDegrees = {-20.0, -12.0, 0.0};
+    public static final double kMaxUsableDepthErrorMeters = 0.2;
+    public static final double kMinUsableConfidence = 0.5;
+    public static final double kAssumedApproachSpeedMetersPerSecond = 1.0;
+
+    private Viability() {}
   }
 }

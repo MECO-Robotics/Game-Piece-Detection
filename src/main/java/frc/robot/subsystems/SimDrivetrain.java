@@ -61,11 +61,12 @@ public class SimDrivetrain {
     lastTimestampSeconds = timer.get();
   }
 
-  public void periodic() {
+  public double periodic() {
     double now = timer.get();
     double dtSeconds = Math.max(0.0, Math.min(0.05, now - lastTimestampSeconds));
     lastTimestampSeconds = now;
     advance(dtSeconds);
+    return dtSeconds;
   }
 
   public void simulationPeriodic(double dtSeconds) {
@@ -92,6 +93,15 @@ public class SimDrivetrain {
 
   public Pose2d getPose() {
     return pose;
+  }
+
+  public void setPose(Pose2d newPose) {
+    pose = newPose;
+    field.setRobotPose(pose);
+  }
+
+  public ChassisSpeeds getCommandedSpeeds() {
+    return commandedSpeeds;
   }
 
   public Field2d getField() {

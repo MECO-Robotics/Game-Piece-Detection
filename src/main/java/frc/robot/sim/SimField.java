@@ -1,16 +1,17 @@
 package frc.robot.sim;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 public class SimField {
   private final Field2d field;
+  private final MaplePhysicsSim maplePhysics = new MaplePhysicsSim();
   private final FieldZone pickupZone =
       new FieldZone(
           "PickupZone",
@@ -23,10 +24,17 @@ public class SimField {
           Constants.Field.kScoringZoneCenter,
           Constants.Field.kScoringZoneLengthMeters,
           Constants.Field.kScoringZoneWidthMeters);
+  private final FieldZone bump =
+      new FieldZone(
+          "Bump",
+          Constants.Field.kBumpCenter,
+          Constants.Field.kBumpLengthMeters,
+          Constants.Field.kBumpWidthMeters);
 
-  private final List<SimGamePiece> availableFuel = new ArrayList<>();
-  private final List<SimGamePiece> scoredFuel = new ArrayList<>();
   private Optional<SimGamePiece> carriedFuel = Optional.empty();
+  private int scoredFuelCount;
+  private boolean fuelPickedUpThisLoop;
+  private int totalFuelPickups;
 
   public SimField(Field2d field) {
     this.field = field;
@@ -34,29 +42,46 @@ public class SimField {
   }
 
   public void reset() {
-    availableFuel.clear();
-    scoredFuel.clear();
+    maplePhysics.reset();
     carriedFuel = Optional.empty();
-
-    for (int i = 0; i < Constants.Field.kStartingFuelPoses.size(); i++) {
-      availableFuel.add(new SimGamePiece(i + 1, "fuel", Constants.Field.kStartingFuelPoses.get(i)));
-    }
-
+    scoredFuelCount = 0;
+    fuelPickedUpThisLoop = false;
+    totalFuelPickups = 0;
     publishFieldObjects(Constants.Drivetrain.kStartingPose());
+  }
+
+  public Pose2d applyPhysics(Pose2d robotPose, ChassisSpeeds robotRelativeSpeeds, double dtSeconds) {
+    fuelPickedUpThisLoop = false;
+    Pose2d mapleRobotPose = maplePhysics.update(robotPose, robotRelativeSpeeds);
+    if (tryPickupClosestFuel(mapleRobotPose)) {
+      fuelPickedUpThisLoop = true;
+      totalFuelPickups++;
+    }
+    return mapleRobotPose;
   }
 
   public void periodic(Pose2d robotPose) {
     carriedFuel = carriedFuel.map(piece -> piece.withPose(robotPose));
     publishFieldObjects(robotPose);
-    SmartDashboard.putNumber("SimField/AvailableFuel", availableFuel.size());
-    SmartDashboard.putNumber("SimField/ScoredFuel", scoredFuel.size());
+    SmartDashboard.putNumber("SimField/AvailableFuel", maplePhysics.getAvailableFuelCount());
+    SmartDashboard.putNumber("SimField/ScoredFuel", scoredFuelCount);
     SmartDashboard.putBoolean("SimField/CarryingFuel", carriedFuel.isPresent());
     SmartDashboard.putBoolean("SimField/RobotInPickupZone", pickupZone.contains(robotPose));
     SmartDashboard.putBoolean("SimField/RobotInScoringZone", scoringZone.contains(robotPose));
+    SmartDashboard.putBoolean("SimField/FuelPickedUpThisLoop", fuelPickedUpThisLoop);
+    SmartDashboard.putNumber("SimField/TotalFuelPickups", totalFuelPickups);
+    SmartDashboard.putBoolean("MapleSim/Enabled", true);
+    SmartDashboard.putBoolean("MapleSim/RobotHitObstacle", maplePhysics.didRobotHitMapleObstacle());
+    SmartDashboard.putNumber("MapleSim/AvailableFuel", maplePhysics.getAvailableFuelCount());
+    SmartDashboard.putNumber("MapleSim/MaxFuelSpeed", maplePhysics.getMaxFuelSpeed());
   }
 
   public Optional<Pose2d> getFirstAvailableFuelPose() {
-    return availableFuel.stream().findFirst().map(SimGamePiece::pose);
+    return maplePhysics.getFirstAvailableFuelPose();
+  }
+
+  public List<Pose2d> getAvailableFuelPoses() {
+    return maplePhysics.getAvailableFuelPoses();
   }
 
   public List<Pose2d> getAvailableFuelPoses() {
@@ -68,17 +93,13 @@ public class SimField {
       return false;
     }
 
-    Optional<SimGamePiece> closest =
-        availableFuel.stream()
-            .filter(piece -> distance(robotPose, piece.pose()) <= Constants.Field.kPickupRadiusMeters)
-            .min(Comparator.comparingDouble(piece -> distance(robotPose, piece.pose())));
-
-    closest.ifPresent(
-        piece -> {
-          availableFuel.remove(piece);
-          carriedFuel = Optional.of(piece.withPose(robotPose));
-        });
-    return closest.isPresent();
+    boolean pickedUp =
+        maplePhysics.tryPickupClosestFuel(
+            robotPose, Constants.Physics.kIntakeCaptureRadiusMeters);
+    if (pickedUp) {
+      carriedFuel = Optional.of(new SimGamePiece(-1, "fuel", robotPose));
+    }
+    return pickedUp;
   }
 
   public boolean tryScoreCarriedFuel(Pose2d robotPose) {
@@ -86,23 +107,17 @@ public class SimField {
       return false;
     }
 
-    int scoredIndex = scoredFuel.size();
-    Pose2d scoredPose =
-        new Pose2d(
-            Constants.Field.kScoringZoneCenter.getX(),
-            Constants.Field.kScoringZoneCenter.getY() + scoredIndex * 0.18,
-            Constants.Field.kScoringZoneCenter.getRotation());
-    scoredFuel.add(carriedFuel.get().withPose(scoredPose));
+    scoredFuelCount++;
     carriedFuel = Optional.empty();
     return true;
   }
 
   public int getAvailableFuelCount() {
-    return availableFuel.size();
+    return maplePhysics.getAvailableFuelCount();
   }
 
   public int getScoredFuelCount() {
-    return scoredFuel.size();
+    return scoredFuelCount;
   }
 
   public boolean isCarryingFuel() {
@@ -118,16 +133,33 @@ public class SimField {
   }
 
   private void publishFieldObjects(Pose2d robotPose) {
-    field.getObject("AvailableFuel").setPoses(availableFuel.stream().map(SimGamePiece::pose).toList());
+    field.getObject("AvailableFuel").setPoses(maplePhysics.getAvailableFuelPoses());
     field.getObject("CarriedFuel")
         .setPoses(carriedFuel.map(piece -> List.of(piece.pose())).orElseGet(List::of));
-    field.getObject("ScoredFuel").setPoses(scoredFuel.stream().map(SimGamePiece::pose).toList());
+    field.getObject("ScoredFuel").setPoses(scoredFuelMarkerPoses());
     field.getObject("PickupZone").setPoses(pickupZone.markerPoses());
     field.getObject("ScoringZone").setPoses(scoringZone.markerPoses());
+    field.getObject("Bump").setPoses(bump.markerPoses());
+    field.getObject("FieldBounds").setPoses(fieldBoundaryMarkerPoses());
     field.getObject("RobotTruth").setPose(robotPose);
   }
 
-  private static double distance(Pose2d a, Pose2d b) {
-    return a.getTranslation().getDistance(b.getTranslation());
+  private List<Pose2d> scoredFuelMarkerPoses() {
+    return java.util.stream.IntStream.range(0, scoredFuelCount)
+        .mapToObj(
+            index ->
+                new Pose2d(
+                    Constants.Field.kScoringZoneCenter.getX(),
+                    Constants.Field.kScoringZoneCenter.getY() + index * 0.18,
+                    Constants.Field.kScoringZoneCenter.getRotation()))
+        .toList();
+  }
+
+  private List<Pose2d> fieldBoundaryMarkerPoses() {
+    return List.of(
+        new Pose2d(0.0, 0.0, Rotation2d.kZero),
+        new Pose2d(Constants.Field.kLengthMeters, 0.0, Rotation2d.kZero),
+        new Pose2d(Constants.Field.kLengthMeters, Constants.Field.kWidthMeters, Rotation2d.kZero),
+        new Pose2d(0.0, Constants.Field.kWidthMeters, Rotation2d.kZero));
   }
 }
