@@ -4,6 +4,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.sim.PhotonVisionSim;
+import frc.robot.sim.RgbdViabilitySweep;
 import frc.robot.sim.SimField;
 import frc.robot.sim.WaypointPathFollower;
 import frc.robot.subsystems.SimDrivetrain;
@@ -19,6 +20,7 @@ public class Robot extends TimedRobot {
   private final SimDrivetrain drivetrain = new SimDrivetrain();
   private final SimField simField = new SimField(drivetrain.getField());
   private final WaypointPathFollower pathFollower = new WaypointPathFollower();
+  private final RgbdViabilitySweep viabilitySweep = new RgbdViabilitySweep();
   private PhotonVisionSim photonVisionSim;
   private Day2AutoStep day2AutoStep = Day2AutoStep.DONE;
   private Optional<Pose2d> activeFuelTarget = Optional.empty();
@@ -29,12 +31,15 @@ public class Robot extends TimedRobot {
 
     if (isSimulation()) {
       photonVisionSim = new PhotonVisionSim();
+      viabilitySweep.runAndPublish();
     }
   }
 
   @Override
   public void robotPeriodic() {
-    drivetrain.periodic();
+    double dtSeconds = drivetrain.periodic();
+    drivetrain.setPose(
+        simField.applyPhysics(drivetrain.getPose(), drivetrain.getCommandedSpeeds(), dtSeconds));
     simField.periodic(drivetrain.getPose());
 
     SmartDashboard.putNumber("Robot/PoseX", drivetrain.getPose().getX());
@@ -80,6 +85,12 @@ public class Robot extends TimedRobot {
   }
 
   private void driveToFuel() {
+    if (simField.isCarryingFuel()) {
+      day2AutoStep = Day2AutoStep.DRIVE_TO_SCORE;
+      return;
+    }
+
+    activeFuelTarget = simField.getFirstAvailableFuelPose();
     if (activeFuelTarget.isEmpty()) {
       day2AutoStep = Day2AutoStep.DONE;
       return;

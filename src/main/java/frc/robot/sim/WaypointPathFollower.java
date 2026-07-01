@@ -5,7 +5,9 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import frc.robot.Constants;
 
 public class WaypointPathFollower {
-  private static final double kTranslationKp = 1.4;
+  private static final double kCruiseSpeedMetersPerSecond =
+      Constants.Drivetrain.kMaxLinearSpeedMetersPerSecond;
+  private static final double kWaypointArrivalEpsilonMeters = 0.000001;
 
   public ChassisSpeeds calculate(Pose2d robotPose, Pose2d targetPose) {
     double fieldErrorX = targetPose.getX() - robotPose.getX();
@@ -14,13 +16,9 @@ public class WaypointPathFollower {
 
     double fieldVx = 0.0;
     double fieldVy = 0.0;
-    if (distanceMeters > 1e-6) {
-      double speed =
-          Math.min(
-              distanceMeters * kTranslationKp,
-              Constants.Drivetrain.kMaxLinearSpeedMetersPerSecond);
-      fieldVx = speed * fieldErrorX / distanceMeters;
-      fieldVy = speed * fieldErrorY / distanceMeters;
+    if (distanceMeters > kWaypointArrivalEpsilonMeters) {
+      fieldVx = kCruiseSpeedMetersPerSecond * fieldErrorX / distanceMeters;
+      fieldVy = kCruiseSpeedMetersPerSecond * fieldErrorY / distanceMeters;
     }
 
     double cos = robotPose.getRotation().getCos();
