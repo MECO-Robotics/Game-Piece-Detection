@@ -57,8 +57,19 @@ public final class Constants {
     public static final int kCameraHeight = 480;
     public static final double kHorizontalFovDegrees = 70.0;
     public static final double kNominalFps = 30.0;
+    public static final double kSimUpdatePeriodSeconds = 1.0 / kNominalFps;
     public static final double kAverageLatencyMs = 30.0;
     public static final double kLatencyStdDevMs = 5.0;
+    public static final double kCalibXErrorPixels = 0.3;
+    public static final double kCalibYErrorPixels = 0.3;
+    public static final long kSimNoiseSeed = 3026L;
+    public static final double kMinFuelTargetAreaPixels = 4.0;
+    public static final double kMaxFuelSightRangeMeters = 8.0;
+    public static final float kFuelTargetConfidence = 0.98f;
+    public static final double kFuelTargetRadiusMeters = 0.076;
+    public static final double kFuelTargetDiameterMeters = 2.0 * kFuelTargetRadiusMeters;
+    public static final int kFuelDetectionClass = 1;
+    public static final double kFuelTargetHeightMeters = 0.08;
     public static final Transform3d kRobotToCamera =
         new Transform3d(
             new Translation3d(0.28, 0.0, 0.42),

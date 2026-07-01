@@ -9,7 +9,31 @@ Greenfield WPILib + PhotonVision simulation stack for RGB-D game-piece detection
 - Simulated drivetrain pose is published to `Field2d`.
 - PhotonVision simulation is initialized with a generic front RGB-D camera.
 - Day 2 field model added with fuel truth objects, pickup and scoring zones, and a simple waypoint path follower.
+- Day 3 vision simulation now injects field fuel truth as PhotonVision simulated targets with camera latency/noise properties and publishes target telemetry to SmartDashboard.
 - Automated tests cover drivetrain motion, fuel pickup/scoring state, path follower output, and a full simple pickup-to-score sim path.
+
+Day 3 telemetry keys now exposed:
+- `Vision/VisibleFuelTargets`
+- `Vision/HasTargets`
+- `Vision/BestFuelYawDeg`
+- `Vision/BestFuelPitchDeg`
+- `Vision/BestFuelClass`
+- `Vision/BestFuelConfidence`
+- `Vision/FuelLatencyMs`
+- `Vision/BestFuelRangeMeters`
+- `Vision/BestFuelCameraToTargetX`
+- `Vision/BestFuelCameraToTargetY`
+- `Vision/BestFuelCameraToTargetZ`
+- `Vision/ConfiguredLatencyStdDevMs`
+- `Vision/ConfiguredCalibNoiseXPixels`
+- `Vision/ConfiguredCalibNoiseYPixels`
+- `Vision/MinFuelTargetAreaPixels`
+- `Vision/MaxFuelSightRangeMeters`
+- `Vision/UpdateSkippedForThrottle`
+- `Vision/UpdateRanThisLoop`
+- `Vision/UpdateFault`
+- `Vision/UpdateHealthy`
+- `Vision/Status`
 
 ## Commands
 

@@ -59,6 +59,10 @@ public class SimField {
     return availableFuel.stream().findFirst().map(SimGamePiece::pose);
   }
 
+  public List<Pose2d> getAvailableFuelPoses() {
+    return availableFuel.stream().map(SimGamePiece::pose).toList();
+  }
+
   public boolean tryPickupClosestFuel(Pose2d robotPose) {
     if (carriedFuel.isPresent()) {
       return false;
